@@ -1,0 +1,13 @@
+total 41
+drwxr-xr-x   6 inin     i2groups     1024 Jan 16  2001 .
+drwxr-xr-x   9 inin     i2groups     1024 Jan 16  2001 ..
+-rwxr-xr-x   1 inin     i2groups    14840 Jan 16  2001 boot.s
+-rwxr-xr-x   1 inin     i2groups      281 Jan 16  2001 files
+-rwxr-xr-x   1 inin     i2groups      850 Jan 16  2001 frontpanel.cc
+-rwxr-xr-x   1 inin     i2groups     4387 Jan 16  2001 frontpanel.hh
+-rwxr-xr-x   1 inin     i2groups     5135 Jan 16  2001 init.cc
+drwxr-xr-x   2 inin     i2groups     1024 Jan 16  2001 memory
+drwxr-xr-x   2 inin     i2groups     1024 Jan 16  2001 os
+-rwxr-xr-x   1 inin     i2groups     5435 Jan 16  2001 start.c
+drwxr-xr-x   2 inin     i2groups     1024 Jan 16  2001 streams
+drwxr-xr-x   2 inin     i2groups     1024 Jan 16  2001 system
