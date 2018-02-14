@@ -14,6 +14,9 @@
 #include "inpacket.hh"
 #include "ipaddr.hh"
 #include "queue.hh"
+#include "tcpsocket.hh"
+#include "threads.hh"
+#include "timer.hh"
 
 /****************** CLASS DEFINITION SECTION ********************************/
 
@@ -48,6 +51,12 @@ class TCP
 
   void deleteConnection(TCPConnection*);
   // Removes a connection from the list and deletes it
+
+  bool acceptConnection(uword portNo);
+  // Is true when a connection is accepted on port portNo.
+  void connectionEstablished(TCPConnection* theConnection);
+  // Create a new TCPSocket. Register it in TCPConnection.
+  // Create and start a SimpleApplication.
 
   enum { tcpHeaderLength = 20 };
 
@@ -104,6 +113,11 @@ class TCPConnection
             udword theLength);
   // Send outgoing data
 
+  uword serverPortNumber();
+  // Return myPort.
+  void  registerSocket(TCPSocket* theSocket);
+  // Set mySocket to theSocket.
+
   //-------------------------------------------------------------------------
   //
   // Interface to TCPState
@@ -129,6 +143,7 @@ class TCPConnection
 
   TCPSender* myTCPSender;
   TCPState*  myState;
+  TCPSocket* mySocket;
 };
 
 /*****************************************************************************
@@ -254,6 +269,7 @@ class EstablishedState : public TCPState
             byte*  theData,
             udword theLength);
   // Send outgoing data
+  void AppClose(TCPConnection* theConnection);
 
  protected:
   EstablishedState() {}
@@ -308,6 +324,31 @@ class LastAckState : public TCPState
 
  protected:
   LastAckState() {}
+};
+
+class FinWait1State : public TCPState
+{
+ public:
+  static FinWait1State* instance();
+
+  void Acknowledge(TCPConnection* theConnection,
+                  udword theAcknowledgementNumber);
+  // Handle incoming Acknowledgement
+
+ protected:
+  FinWait1State() {}
+};
+
+class FinWait2State : public TCPState
+{
+public:
+ static FinWait2State* instance();
+
+ void NetClose(TCPConnection* theConnection);
+ // Close the connection
+
+protected:
+ FinWait2State() {}
 };
 
 /*****************************************************************************
@@ -373,6 +414,32 @@ class TCPInPacket : public InPacket
   uword     myDestinationPort;
   udword    mySequenceNumber;
   udword    myAcknowledgementNumber;
+};
+
+/*****************************************************************************
+*%
+*% CLASS NAME   : TimeWaitTimer
+*%
+*% BASE CLASSES : None
+*%
+*% DESCRIPTION  : Represents one final wait after NetClose
+*%
+*% SUBCLASSING  : None.
+*%
+*%***************************************************************************/
+class TimeWaitTimer : public Timed
+{
+ public:
+   TimeWaitTimer(TCPConnection* theConnection);
+   // Constructor: initiate myBlinkTime
+   void start();
+   // Start timer
+
+ private:
+   void timeOut();
+   // notify FrontPanel that this timer has expired.
+   Duration myWaitTime;
+   TCPConnection* myTCPConnection;
 };
 
 /*****************************************************************************

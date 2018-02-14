@@ -492,8 +492,8 @@ Ethernet::transmittPacket(byte *theData, udword theLength)
     {
         memcpy(nextTxBufferPage->data, theData, theLength);
         nextTxBufferPage->endPointer = (nextTxAddress - txStartAddress) + commandLength + theLength - 1 - padLength;
-        dword packetLength = commandLength + theLength - padLength;
-        cout << "padded: " << theLength <<  " to: " << packetLength << endl;
+        // dword packetLength = commandLength + theLength - padLength;
+        // cout << "padded: " << theLength <<  " to: " << packetLength << endl;
     }
   }
   else

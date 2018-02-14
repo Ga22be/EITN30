@@ -63,4 +63,3 @@ InPacket::deleteAnswerChain()
 }
 
 /****************** END OF FILE InPacket.cc *************************************/
-
