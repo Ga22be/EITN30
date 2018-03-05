@@ -45,6 +45,8 @@ ARPInPacket::ARPInPacket(byte*      theData,
 void
 ARPInPacket::decode() {
   ARPHeader* aHeader = (ARPHeader *) myData;
+  // cout << "ARPInPacket::decode Bugspray1" << endl;
+  // cout << aHeader->targetIPAddress << ":" << IP::instance().myAddress() << endl;
   if(aHeader->targetIPAddress == IP::instance().myAddress()) {
     // cout << "arp from: " << aHeader->senderEthAddress << endl;
     // cout << aHeader->targetIPAddress << endl;
@@ -100,7 +102,6 @@ ARPInPacket::decode() {
       this->answer((byte *) &aNewHeader, myLength);
     }
   }
-
 }
 
 //----------------------------------------------------------------------------

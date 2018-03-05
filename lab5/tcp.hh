@@ -81,6 +81,8 @@ class TCP
 *%***************************************************************************/
 class TCPState;
 class TCPSender;
+class RetransmitTimer;
+class TimeWaitTimer;
 class TCPConnection
 {
  public:
@@ -144,6 +146,19 @@ class TCPConnection
   TCPSender* myTCPSender;
   TCPState*  myState;
   TCPSocket* mySocket;
+  RetransmitTimer* myRetransmitTimer;
+  TimeWaitTimer* myTimeWaitTimer;
+
+  byte* transmitQueue; // a reference to the data to be sent,
+  udword queueLength; // the number of data to be sent
+  udword firstSeq; // the sequence number of the first byte in the queue
+
+  udword theOffset; // the first position in the queue relative the variable transmitQueue to send from
+  byte* theFirst; // the first byte to send in the segment relative the variable transmitQueue
+  udword theSendLength; // the number of byte to send in a single segment
+
+  udword myWindowSize; // contains the offered window size from each segment.
+  udword sentMaxSeq; // the highest sequence number transmitted so far
 };
 
 /*****************************************************************************
@@ -376,7 +391,8 @@ class TCPSender
   void sendData(byte*  theData,
                 udword theLength);
   // Send a data segment. PSH and ACK flags are set.
-
+  void sendFromQueue();
+  // maintain the queue and send smaller sets of data
  private:
   TCPConnection* myConnection;
   InPacket*      myAnswerChain;
@@ -420,7 +436,7 @@ class TCPInPacket : public InPacket
 *%
 *% CLASS NAME   : TimeWaitTimer
 *%
-*% BASE CLASSES : None
+*% BASE CLASSES : Timed
 *%
 *% DESCRIPTION  : Represents one final wait after NetClose
 *%
@@ -497,6 +513,37 @@ class TCPPseudoHeader
   byte      zero;
   byte      protocol;
   uword     tcpLength;
+};
+
+
+/*****************************************************************************
+*%
+*% CLASS NAME   : RetransmitTimer
+*%
+*% BASE CLASSES : Timed
+*%
+*% CLASS TYPE   :
+*%
+*% DESCRIPTION  : Timer for retransmisson of lost packages
+*%
+*% SUBCLASSING  : None.
+*%
+*%***************************************************************************/
+class RetransmitTimer : public Timed
+{
+ public:
+   RetransmitTimer(TCPConnection* theConnection,
+                   Duration retransmitTime);
+   void start();
+   // this->timeOutAfter(myRetransmitTime);
+   void cancel();
+   // this->resetTimeOut();
+ private:
+   void timeOut();
+   // ...->sendNext = ...->sentUnAcked; ..->sendFromQueue();
+   TCPConnection* myConnection;
+   Duration myRetransmitTime;
+   // one second
 };
 
 #endif

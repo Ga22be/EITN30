@@ -1,9 +1,9 @@
 /*!***************************************************************************
 *!
 *! FILE NAME  : arp.hh
-*! 
+*!
 *! DESCRIPTION: ARP, Address resolution protocol
-*! 
+*!
 *!***************************************************************************/
 
 #ifndef arp_hh
@@ -37,7 +37,7 @@ class ARPInPacket : public InPacket
               InPacket*  theFrame);
   void decode();
   void answer(byte* theData, udword theLength);
-  uword headerOffset();  
+  uword headerOffset();
  private:
 };
 
@@ -70,4 +70,3 @@ class ARPHeader
 
 #endif
 /****************** END OF FILE llc.hh *************************************/
-
