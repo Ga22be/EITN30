@@ -55,71 +55,88 @@ HTTPServer::doit() {
   {
     coreOut << "Core::doit begin " << ax_coreleft_total() << endl;
     aData = mySocket->Read(aLength);
-    if(aLength > 0){
+    if(aLength > 4){
       //  cout << aData << endl;
-       if(strncmp(aData, "GET", 3) == 0) {
-         // GET
-         cout << "GET Received" << endl;
-         byte* firstHTTP = strstr(aData, "HTTP");
-         udword pathAndFileLength = (udword) ((firstHTTP-1)-(aData+4));
-         char* pathAndFile = extractString((char*)(aData+4), pathAndFileLength);
+      char* type = extractString((char*)aData, 4);
+      if(strncmp(type, "GET", 3) == 0 || strncmp(type, "HEAD", 4) == 0) {
+        // GET
+        cout << "GET/HEAD Received" << endl;
+        bool isHead = (strncmp(type, "HEAD", 4) == 0);
+        cout << unsigned(isHead) << endl;
+        byte* firstHTTP = strstr(aData, "HTTP");
+        uword aDataOffset = 4;
+        if(isHead){
+          aDataOffset++;
+        }
+        udword pathAndFileLength = (udword) ((firstHTTP-1)-(aData+aDataOffset));
+        char* pathAndFile = extractString((char*)(aData+aDataOffset), pathAndFileLength);
         //  if(strcmp(pathAndFile, "/") == 0){
-         udword fileLength = 0;
-         char* path;
-         char* fileName;
-         if(strcmp(pathAndFile, "/") == 0) {
-           cout << "Requested: root" << endl;
-           path = NULL;
-           fileName = "index.htm";
-         } else {
+        udword fileLength = 0;
+        char* path;
+        char* fileName;
+        if(strcmp(pathAndFile, "/") == 0) {
+          cout << "Requested: root" << endl;
+          path = NULL;
+          fileName = "index.htm";
+        } else {
           //  cout << "Requested: " << pathAndFile << endl;
-           char* delimiter = strrchr(pathAndFile, '/');
+          char* delimiter = strrchr(pathAndFile, '/');
           //  cout << "Delimiter: " << delimiter << endl;
-           udword pathLength = (udword) (delimiter - pathAndFile);
+          udword pathLength = (udword) (delimiter - pathAndFile);
           //  cout << "pathLength: " << pathLength << endl;
-           path = extractString(pathAndFile+1, pathLength);
-           path[strlen(path)-1] = 0xff;
-           fileName = extractString(delimiter+1, pathAndFileLength-pathLength-1);
+          path = extractString(pathAndFile+1, pathLength);
+          path[strlen(path)-1] = 0xff;
+          fileName = extractString(delimiter+1, pathAndFileLength-pathLength-1);
           //  cout << "Path: " << path << endl;
           //  cout << "File: " << fileName << endl;
-         }
+        }
 
         //  See if file exists
-         byte* file = FileSystem::instance().readFile(path, fileName, fileLength);
-         char* response;
-         udword responseLength = 0;
-         if(file != 0){
-           // HEADER
-           char* header = new char[1000];
-           buildHeader(header, strrchr(fileName, '.')+1, fileLength);
+        byte* file = FileSystem::instance().readFile(path, fileName, fileLength);
+        char* response;
+        udword responseLength = 0;
+        if(file != 0){
+          // HEADER
+          char* header = new char[1000];
+          buildHeader(header, strrchr(fileName, '.')+1, fileLength);
 
-           //  char* header = "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n";
-           udword headerLength = strlen(header);
-           //  cout << header << endl;
-           responseLength = headerLength + fileLength;
-           response = new char[responseLength];
-           memcpy(response, header, headerLength);
-           memcpy(response+headerLength, file, fileLength);
-           //  cout << headerLength << ":" << fileLength << endl;
-           //  cout << (strlen(header) + fileLength) << endl;
-           //  cout << "response: " << response << endl;
-           delete[] header;
-         } else {
-           cout << "HTTP/1.0 404 Not found" << endl;
-           response = "HTTP/1.0 404 Not found\r\nContent-type: text/html\r\nContent-Length: 90\r\n\r\n<html><head><title>File not found</title></head><body><h1>404 Not found</h1></body></html>";
-           responseLength = strlen(response);
-         }
-         mySocket->Write((byte*) response, responseLength);
-         delete[] response;
+          //  char* header = "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n";
+          udword headerLength = strlen(header);
+          //  cout << header << endl;
+          responseLength = headerLength + fileLength;
+          if(isHead){
+            responseLength = headerLength;
+          }
+          response = new char[responseLength];
+          memcpy(response, header, headerLength);
+          if(!isHead){
+            memcpy(response+headerLength, file, fileLength);
+          }
+          //  cout << headerLength << ":" << fileLength << endl;
+          //  cout << (strlen(header) + fileLength) << endl;
+          //  cout << "response: " << response << endl;
+          delete[] header;
+        } else {
+          cout << "HTTP/1.0 404 Not found" << endl;
+          if(!isHead){
+            response = "HTTP/1.0 404 Not found\r\nContent-type: text/html\r\nContent-Length: 90\r\n\r\n<html><head><title>File not found</title></head><body><h1>404 Not found</h1></body></html>";
+          } else {
+            response = "HTTP/1.0 404 Not found\r\nContent-type: text/html\r\nContent-Length: 90\r\n\r\n";
+          }
+          responseLength = strlen(response);
+        }
+        mySocket->Write((byte*) response, responseLength);
+        delete[] response;
 
-         delete[] path;
-         delete[] fileName;
-         delete[] pathAndFile;
-       } else if (strncmp(aData, "HEAD", 4) == 0) {
-         // HEAD
-       }
+        delete[] path;
+        delete[] fileName;
+        delete[] pathAndFile;
+      } else if (strncmp(aData, "HEAD", 4) == 0) {
+        // HEAD
+      }
       // BLACK MAGIC, no touchie
       // done = true;
+      delete[] type;
     }
 
     delete[] aData;
