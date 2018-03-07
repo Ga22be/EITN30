@@ -56,7 +56,7 @@ bool FileSystem::writeFile(char *path,char *name,
   saveFile = new char[theLength+1];
   if(saveFile != NULL){
     saveFile[0] = '\0';
-    saveFile = strcat(saveFile, theData);
+    saveFile = strcat(saveFile, (char*)theData);
     // memcpy(saveFile, theData, theLength);
     // saveFile[theLength] = '\0';
     trace << "File created" << endl;
@@ -90,7 +90,7 @@ byte *FileSystem::readFile(char *path,char *name,udword& theLength)
   {
     trace << "Reading save file" << endl;
     theLength = strlen(saveFile);
-    return saveFile;
+    return (byte*) saveFile;
   }
   int file_size=sizeof(FileSystem::myFileSystem);
   int curr_size=0;
@@ -99,7 +99,7 @@ byte *FileSystem::readFile(char *path,char *name,udword& theLength)
   while((curr_size<(file_size-16))&&(curr_size>=0))
   {
     LzHead *header=(LzHead *)&FileSystem::myFileSystem[curr_size];
-    char *file_path;
+    // char *file_path;
     udword the_file_size;
 
     curr_size+=header->HeadSiz+2;
@@ -112,12 +112,12 @@ byte *FileSystem::readFile(char *path,char *name,udword& theLength)
     the_file_size=curr_file_size;
 
     // check if it is the correct file.
-    if ((!strncmp(name,header->Fname,header->name_length))&&
+    if ((!strncmp(name,(const char*)header->Fname,header->name_length))&&
 	(header->name_length))
       {
 	bool endCheck=false;
 
-        byte *file_ptr=&FileSystem::myFileSystem[curr_size];
+        byte *file_ptr=(byte*) &FileSystem::myFileSystem[curr_size];
 
 
 	//may have found it check path
@@ -142,7 +142,7 @@ byte *FileSystem::readFile(char *path,char *name,udword& theLength)
 	    // printf("%p\n",file_ptr);
 
 	    path_len=file_path2-file_path;
-	    if (!strncmp(path,file_path,path_len))
+	    if (!strncmp(path,(const char*)file_path,path_len))
 	      {
 		if (strlen(path)==path_len)
 		  {
@@ -180,10 +180,11 @@ FileSystem::flushSaveFile(){
     trace << "DELETE SAVE FILE" << endl;
     delete[] saveFile;
     saveFile = NULL;
+    return true;
   } else {
     trace << "NO FILE TO DELETE" << endl;
+    return false;
   }
-
 }
 
 

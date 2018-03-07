@@ -42,7 +42,7 @@ class FileSystem
 
  private:
   FileSystem();
-  byte* saveFile;
+  char* saveFile;
   static const byte myFileSystem[];
 };
 

@@ -888,23 +888,23 @@ TCPInPacket::decode()
 
       udword aLength = myLength-headerOffset();
       if(aConnection->aggregation == NULL){
-        aConnection->aggregation = new char[aLength + 1];
+        aConnection->aggregation = new byte[aLength + 1];
         memcpy(aConnection->aggregation, myData+headerOffset(), aLength);
         aConnection->aggregationLength = aLength;
         aConnection->aggregation[aConnection->aggregationLength] = '\0';
       } else {
         // READ NEXT
         udword continuationLength = aLength;
-        char* continuation = myData+headerOffset();
+        char* continuation = (char*) myData+headerOffset();
         // cout << continuation << endl;
 
         // SAVE PREVIOUS AGGREGATION
         udword prevAggregationLength = aConnection->aggregationLength;
-        char* prevAggregation = aConnection->aggregation;
+        char* prevAggregation = (char*) aConnection->aggregation;
 
         // COPY OLD AND NEW DATA INTO NEW, BIGGER, AGGREGATION
         aConnection->aggregationLength += continuationLength;
-        aConnection->aggregation = new char[aConnection->aggregationLength+1];
+        aConnection->aggregation = new byte[aConnection->aggregationLength+1];
         memcpy(aConnection->aggregation, prevAggregation, prevAggregationLength);
         memcpy(aConnection->aggregation+prevAggregationLength, continuation, continuationLength);
         aConnection->aggregation[aConnection->aggregationLength]='\0';

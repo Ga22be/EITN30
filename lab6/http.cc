@@ -61,7 +61,7 @@ HTTPServer::doit() {
       bool isHead = (strncmp(type, "HEAD", 4) == 0);
       bool isPOST = (strncmp(type, "POST", 4) == 0);
 
-      byte* firstHTTP = strstr(aData, "HTTP");
+      byte* firstHTTP = (byte*) strstr((char*) aData, "HTTP");
       uword aDataOffset = 4;
       if(isHead || isPOST){
         aDataOffset++;
@@ -92,7 +92,7 @@ HTTPServer::doit() {
         udword fromBegining = (udword) (strstr(path, "private")-path);
         if(path == NULL){
           //IF ROOT CASE
-          fromBegining = -1;
+          fromBegining = 1337;
         }
 
         char* header = NULL;
@@ -100,13 +100,13 @@ HTTPServer::doit() {
           // This is a private realm
           trace << "YOU HAVE ENTERED MY PRIVATE REALM" << endl;
 
-          if(strstr(aData, "Authorization: Basic ") == NULL){
+          if(strstr((char*) aData, "Authorization: Basic ") == NULL){
             // Call to private without auth
             trace << "BRO ARE YOU EVEN TRYING" << endl;
             header = new char[1000];
             buildHeader(header, strrchr(fileName, '.')+1, 97, true);
           } else {
-            char* beginning = strstr(aData, "Authorization: Basic ")+21;
+            char* beginning = strstr((char*) aData, "Authorization: Basic ")+21;
             char* end = strstr(beginning, "\r\n");
             char* encodedCredentials = extractString(beginning, (udword) (end-beginning));
             char* decodedCredentials = decodeBase64(encodedCredentials);
@@ -166,7 +166,7 @@ HTTPServer::doit() {
 
 
       }
-      else if (strncmp(aData, "POST", 4) == 0) {
+      else if (strncmp((char*) aData, "POST", 4) == 0) {
         coreOut << "Core::POST begin " << ax_coreleft_total() << endl;
         // POST
         trace << "POST Received" << endl;
@@ -181,7 +181,7 @@ HTTPServer::doit() {
         while(strstr(aggregation, "\r\n\r\n") == NULL){
           // READ NEXT
           udword continuationLength = 0;
-          char* continuation = mySocket->Read(continuationLength);
+          byte* continuation = mySocket->Read(continuationLength);
           // cout << continuation << endl;
 
           // SAVE PREVIOUS AGGREGATION
@@ -207,7 +207,7 @@ HTTPServer::doit() {
 
           // READ NEXT
           udword continuationLength = 0;
-          char* continuation = mySocket->Read(continuationLength);
+          byte* continuation = mySocket->Read(continuationLength);
           // cout << continuation << endl;
 
           // SAVE PREVIOUS AGGREGATION
@@ -235,7 +235,7 @@ HTTPServer::doit() {
           // This is a private realm
           trace << "YOU HAVE ENTERED MY PRIVATE REALM" << endl;
 
-          if(strstr(aData, "Authorization: Basic ") == NULL){
+          if(strstr((char*)aData, "Authorization: Basic ") == NULL){
             // Call to private without auth
             trace << "BRO ARE YOU EVEN TRYING" << endl;
             header = new char[1000];
@@ -244,7 +244,7 @@ HTTPServer::doit() {
 
           } else {
             coreOut << "Core::POSTandAuthAuth before " << ax_coreleft_total() << endl;
-            char* beginning = strstr(aData, "Authorization: Basic ")+21;
+            char* beginning = strstr((char*) aData, "Authorization: Basic ")+21;
             char* end = strstr(beginning, "\r\n");
             char* encodedCredentials = extractString(beginning, (udword) (end-beginning));
             char* decodedCredentials = decodeBase64(encodedCredentials);
@@ -285,7 +285,7 @@ HTTPServer::doit() {
           udword unauthMessageLength = strlen(unauthMessage);
 
           udword headerLength = strlen(header);
-          responseLength = headerLength + unauthMessage;
+          responseLength = headerLength + unauthMessageLength;
           response = new char[responseLength];
           memcpy(response, header, headerLength);
           memcpy(response+headerLength, unauthMessage, unauthMessageLength);
