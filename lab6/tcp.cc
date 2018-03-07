@@ -161,8 +161,8 @@ TCPConnection::TCPConnection(IPAddress& theSourceAddress,
         hisAddress(theSourceAddress),
         hisPort(theSourcePort),
         myPort(theDestinationPort),
-        bufferOffset(0),
-        buffer(NULL)
+        aggregation(NULL),
+        aggregationLength(0)
 {
   trace << "TCP connection created" << endl;
   myTCPSender = new TCPSender(this, theCreator),
@@ -189,6 +189,9 @@ TCPConnection::~TCPConnection()
   myRetransmitTimer->cancel();
   delete myRetransmitTimer;
   delete myTimeWaitTimer;
+  if(aggregation != NULL) {
+    delete[] aggregation;
+  }
   // if(transmitQueue != NULL){
     // delete[] transmitQueue;
   // }
@@ -519,7 +522,7 @@ EstablishedState::Acknowledge(TCPConnection* theConnection,
   // MUCHO IMPORTANTO PRINTO
   // cout << "if info: " << (theConnection->firstSeq + theConnection->queueLength) << ":" << theAcknowledgementNumber << endl;
   if((theConnection->firstSeq + theConnection->queueLength) == theAcknowledgementNumber){
-    cout << "All data sent" << endl;
+    trace << "All data sent" << endl;
     theConnection->firstSeq = 0;
     theConnection->queueLength = 0;
     theConnection->myRetransmitTimer->cancel();
@@ -531,27 +534,6 @@ EstablishedState::Acknowledge(TCPConnection* theConnection,
     //NEVER SHALL I EVER PUT SOMETHING HERE AGAIN
   }
 
-
-  // THIS BREAKS STUFF
-  // if(theConnection->sentMaxSeq > theConnection->sendNext)
-  // {
-  //   cout << "ACK of retransmisson received" << endl;
-  //   theConnection->sendNext = theAcknowledgementNumber;
-  //   theConnection->theOffset = theConnection->sendNext - theConnection->firstSeq;
-  // }
-  // if(theConnection->queueLength > (theConnection->theOffset + theConnection->theSendLength))
-  // {
-  //   theConnection->myTCPSender->sendFromQueue();
-  // }
-  // else if (theAcknowledgementNumber >= theConnection->sentMaxSeq)
-  // {
-  //   theConnection->myRetransmitTimer->cancel();
-  //   theConnection->mySocket->socketDataSent();
-  //   cout << "All data sent" << endl;
-  // } else
-  // {
-  //   // cout << "we are missing a segment in transmission" << endl;
-  // }
 }
 
 //----------------------------------------------------------------------------
@@ -834,29 +816,7 @@ TCPSender::sendFromQueue()
       myConnection->sendNext = myConnection->sentMaxSeq;
     }
     sendFromQueue();
-    // if(myConnection->sentMaxSeq > myConnection->sendNext)
-    // {
-    //   // cout << "Retransmission" << endl;
-    //   myConnection->theSendLength = toSend;
-    //   myConnection->sendNext = myConnection->sentMaxSeq + 1;
-    //   // cout << "Retransmitted" << endl;
-    // } else
-    // {
-    //   // cout << "sendFromQueue()" << endl;
-    //   myConnection->theSendLength = toSend;
-    //
-    //   byte* temp = new byte[myConnection->theSendLength];
-    //   memcpy(temp, myConnection->theFirst, myConnection->theSendLength);
-    //   cout << "theSendLength: " << myConnection->theSendLength << endl;
-    //   cout << "message: " << temp << endl;
-    //   delete[] temp;
-    //
-    //   sendData(myConnection->theFirst, myConnection->theSendLength);
-    //   // This sets the max value that has been sent, hence "- 1" from the next to send
-    //   myConnection->sentMaxSeq = myConnection->sendNext - 1;
-    //   myConnection->myRetransmitTimer->start();
-    // }
-    // // sendFromQueue();
+
   }
   coreOut << "Core::sendFromQueue end " << ax_coreleft_total() << endl;
 }
@@ -923,11 +883,34 @@ TCPInPacket::decode()
     // Connection was established. Handle all states.
     if((tcpHeader->flags & PSH) == 0 && (myLength-headerOffset()) > 0)
     {
-      aConnection->buffer = new byte[myLength-headerOffset()];
-      memcpy(aConnection->buffer, myData+headerOffset(), myLength-headerOffset());
-      aConnection->bufferOffset = myLength-headerOffset();
-      cout << "NO PUSH BUT DATA FOUND" << endl;
-      // aConnection->Receive(mySequenceNumber, myData+headerOffset(), myLength-headerOffset());
+
+      trace << "NO PUSH BUT DATA FOUND" << endl;
+
+      udword aLength = myLength-headerOffset();
+      if(aConnection->aggregation == NULL){
+        aConnection->aggregation = new char[aLength + 1];
+        memcpy(aConnection->aggregation, myData+headerOffset(), aLength);
+        aConnection->aggregationLength = aLength;
+        aConnection->aggregation[aConnection->aggregationLength] = '\0';
+      } else {
+        // READ NEXT
+        udword continuationLength = aLength;
+        char* continuation = myData+headerOffset();
+        // cout << continuation << endl;
+
+        // SAVE PREVIOUS AGGREGATION
+        udword prevAggregationLength = aConnection->aggregationLength;
+        char* prevAggregation = aConnection->aggregation;
+
+        // COPY OLD AND NEW DATA INTO NEW, BIGGER, AGGREGATION
+        aConnection->aggregationLength += continuationLength;
+        aConnection->aggregation = new char[aConnection->aggregationLength+1];
+        memcpy(aConnection->aggregation, prevAggregation, prevAggregationLength);
+        memcpy(aConnection->aggregation+prevAggregationLength, continuation, continuationLength);
+        aConnection->aggregation[aConnection->aggregationLength]='\0';
+        delete[] prevAggregation;
+        delete[] continuation;
+      }
     }
     if((tcpHeader->flags & ACK) != 0)
     {
@@ -936,16 +919,17 @@ TCPInPacket::decode()
     }
     if((tcpHeader->flags & PSH) != 0)
     {
-      if(aConnection->buffer != NULL){
-        cout << "PUSHING BUFFER DATA" << endl;
-        uword totalDataLength = (myLength-headerOffset())+aConnection->bufferOffset;
+      if(aConnection->aggregation != NULL){
+        trace << "PUSHING BUFFER DATA" << endl;
+        uword totalDataLength = (myLength-headerOffset())+aConnection->aggregationLength;
         byte* totalData = new byte[totalDataLength];
-        memcpy(totalData, aConnection->buffer, aConnection->bufferOffset);
-        memcpy(totalData+aConnection->bufferOffset, myData+headerOffset(), myLength-headerOffset());
+        memcpy(totalData, aConnection->aggregation, aConnection->aggregationLength);
+        memcpy(totalData+aConnection->aggregationLength, myData+headerOffset(), myLength-headerOffset());
         // cout << totalData << endl;
         aConnection->Receive(mySequenceNumber, totalData, totalDataLength);
-        delete[] aConnection->buffer;
-        aConnection->buffer = NULL;
+        delete[] aConnection->aggregation;
+        aConnection->aggregation = NULL;
+        aConnection->aggregationLength = 0;
         delete[] totalData;
       } else {
         aConnection->Receive(mySequenceNumber, myData+headerOffset(), myLength-headerOffset());

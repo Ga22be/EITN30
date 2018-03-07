@@ -54,7 +54,6 @@ InPacket::setNewFrame(InPacket* theFrame)
 void
 InPacket::deleteAnswerChain()
 {
-  cout << "chain" << endl;
   if (myFrame)
   {
 	myFrame->deleteAnswerChain();

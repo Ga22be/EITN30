@@ -449,7 +449,7 @@ Ethernet::transmittPacket(byte *theData, udword theLength)
 #endif
     if((uword)availablePages < nOfBufferPagesNeeded)
     {
-      cout << "Tx buffer full, waiting." << endl;
+      trace << "Tx buffer full, waiting." << endl;
       os_delay(1);                                       /* One tic = 10 ms */
       timeOut++;
       /* If nothing happens for 3 seconds then do something drastical.      */

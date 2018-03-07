@@ -38,6 +38,8 @@ class FileSystem
   byte *readFile(char *path,char *name,udword& theLength);
   // returns the ptr to and the length of a file..
 
+  bool flushSaveFile();
+
  private:
   FileSystem();
   byte* saveFile;

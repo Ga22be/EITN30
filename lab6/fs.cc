@@ -35,7 +35,6 @@ FileSystem::FileSystem()
 {
   // int slask;
   saveFile = NULL;
-  cout << "FileSystem created." << endl;
 }
 
 //----------------------------------------------------------------------------
@@ -52,6 +51,7 @@ bool FileSystem::writeFile(char *path,char *name,
 {
   if(saveFile != NULL){
     delete[] saveFile;
+    saveFile = NULL;
   }
   saveFile = new char[theLength+1];
   if(saveFile != NULL){
@@ -59,7 +59,7 @@ bool FileSystem::writeFile(char *path,char *name,
     saveFile = strcat(saveFile, theData);
     // memcpy(saveFile, theData, theLength);
     // saveFile[theLength] = '\0';
-    cout << "File created" << endl;
+    trace << "File created" << endl;
     // cout << saveFile << endl;
     return true;
   } else {
@@ -88,7 +88,7 @@ byte *FileSystem::readFile(char *path,char *name,udword& theLength)
 {
   if(strstr(name, "dynamic.htm") != NULL && saveFile != NULL)
   {
-    cout << "Reading save file" << endl;
+    trace << "Reading save file" << endl;
     theLength = strlen(saveFile);
     return saveFile;
   }
@@ -172,6 +172,18 @@ byte *FileSystem::readFile(char *path,char *name,udword& theLength)
     curr_size+=curr_file_size;
   }
   return 0;
+}
+
+bool
+FileSystem::flushSaveFile(){
+  if(saveFile != NULL){
+    trace << "DELETE SAVE FILE" << endl;
+    delete[] saveFile;
+    saveFile = NULL;
+  } else {
+    trace << "NO FILE TO DELETE" << endl;
+  }
+
 }
 
 

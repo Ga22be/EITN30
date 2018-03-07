@@ -161,8 +161,8 @@ class TCPConnection
   udword sentMaxSeq; // the highest sequence number transmitted so far
 
   //MAGIC GOES HERE
-  udword bufferOffset;
-  byte* buffer;
+  byte* aggregation;
+  udword aggregationLength;
 };
 
 /*****************************************************************************

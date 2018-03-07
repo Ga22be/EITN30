@@ -11,6 +11,7 @@ extern "C"
 #include "threads.hh"
 #include "iostream.hh"
 #include "tcp.hh"
+#include "fs.hh"
 
 // #define D_SOCKET_CORE
 #ifdef D_SOCKET_CORE
@@ -154,7 +155,6 @@ SimpleApplication::doit()
       }
       else if(first == 's')
       {
-        cout << "s" << endl;
         byte* anAnswer = new byte[10000];
         char sequence[] = "abcdefghijklmnopqrstuvwxyz0123456789BASE";
         // cout << "strlen(sequence): " << strlen(sequence) << endl;
@@ -167,7 +167,6 @@ SimpleApplication::doit()
       }
       else if (first == 'r')
       {
-        cout << "r" << endl;
         byte* anAnswer = new byte[100000];
         char sequence[] = "abcdefghijklmnopqrstuvwxyz0123456789BASE";
         // cout << "strlen(sequence): " << strlen(sequence) << endl;
@@ -179,6 +178,10 @@ SimpleApplication::doit()
           mySocket->Write(anAnswer, 100000);
         }
         delete[] anAnswer;
+      }
+      else if (first == 'd')
+      {
+        FileSystem::instance().flushSaveFile();
       }
       // delete first;
       delete[] aData;
