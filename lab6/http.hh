@@ -46,8 +46,12 @@ class HTTPServer : public Job
 
  private:
   // MULLEMECK BYGGER HEADER
-   void buildHeader(char* header, char* suffixDelimiter, udword fileLength);
+   void buildHeader(char* header,
+     char* suffixDelimiter,
+     udword lengthOfContent,
+     bool isPrivate);
    TCPSocket* mySocket;
+   char* admin;
 };
 
 #endif

@@ -147,7 +147,7 @@ SimpleApplication::doit()
       // cout << "first2: " << first2 << endl;
       // memcpy(first, aData, 1);
       mySocket->Write(aData, aLength);
-      cout << "Core::Write() " << ax_coreleft_total() << endl;
+      // cout << "Core::Write() " << ax_coreleft_total() << endl;
       if (first == 'q')
       {
         done = true;

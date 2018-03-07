@@ -160,7 +160,9 @@ TCPConnection::TCPConnection(IPAddress& theSourceAddress,
                              InPacket*  theCreator):
         hisAddress(theSourceAddress),
         hisPort(theSourcePort),
-        myPort(theDestinationPort)
+        myPort(theDestinationPort),
+        bufferOffset(0),
+        buffer(NULL)
 {
   trace << "TCP connection created" << endl;
   myTCPSender = new TCPSender(this, theCreator),
@@ -399,7 +401,6 @@ ListenState::Synchronize(TCPConnection* theConnection,
 
       case 80:
       trace << "got SYN on HTTP port" << endl;
-      cout  << "got SYN on HTTP port" << endl;
       theConnection->receiveNext = theSynchronizationNumber + 1;
       theConnection->receiveWindow = 8*1024;
       theConnection->sendNext = get_time();
@@ -920,6 +921,14 @@ TCPInPacket::decode()
     aConnection->myWindowSize = HILO(tcpHeader->windowSize);
     // cout << "TCPInPacket::OkConnection" << endl;
     // Connection was established. Handle all states.
+    if((tcpHeader->flags & PSH) == 0 && (myLength-headerOffset()) > 0)
+    {
+      aConnection->buffer = new byte[myLength-headerOffset()];
+      memcpy(aConnection->buffer, myData+headerOffset(), myLength-headerOffset());
+      aConnection->bufferOffset = myLength-headerOffset();
+      cout << "NO PUSH BUT DATA FOUND" << endl;
+      // aConnection->Receive(mySequenceNumber, myData+headerOffset(), myLength-headerOffset());
+    }
     if((tcpHeader->flags & ACK) != 0)
     {
       aConnection->Acknowledge(myAcknowledgementNumber);
@@ -927,7 +936,20 @@ TCPInPacket::decode()
     }
     if((tcpHeader->flags & PSH) != 0)
     {
-      aConnection->Receive(mySequenceNumber, myData+headerOffset(), myLength-headerOffset());
+      if(aConnection->buffer != NULL){
+        cout << "PUSHING BUFFER DATA" << endl;
+        uword totalDataLength = (myLength-headerOffset())+aConnection->bufferOffset;
+        byte* totalData = new byte[totalDataLength];
+        memcpy(totalData, aConnection->buffer, aConnection->bufferOffset);
+        memcpy(totalData+aConnection->bufferOffset, myData+headerOffset(), myLength-headerOffset());
+        // cout << totalData << endl;
+        aConnection->Receive(mySequenceNumber, totalData, totalDataLength);
+        delete[] aConnection->buffer;
+        aConnection->buffer = NULL;
+        delete[] totalData;
+      } else {
+        aConnection->Receive(mySequenceNumber, myData+headerOffset(), myLength-headerOffset());
+      }
     }
     if((tcpHeader->flags & FIN) != 0)
     {

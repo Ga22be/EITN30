@@ -38,7 +38,8 @@ extern "C"
 
 /****************** HTTPServer DEFINITION SECTION ***************************/
 HTTPServer::HTTPServer(TCPSocket* theSocket):
-  mySocket(theSocket)
+  mySocket(theSocket),
+  admin("admin:admin")
 {
 
 }
@@ -56,13 +57,13 @@ HTTPServer::doit() {
     coreOut << "Core::doit begin " << ax_coreleft_total() << endl;
     aData = mySocket->Read(aLength);
     if(aLength > 4){
-      //  cout << aData << endl;
+      // cout << aData << endl;
       char* type = extractString((char*)aData, 4);
       if(strncmp(type, "GET", 3) == 0 || strncmp(type, "HEAD", 4) == 0) {
         // GET
         cout << "GET/HEAD Received" << endl;
         bool isHead = (strncmp(type, "HEAD", 4) == 0);
-        cout << unsigned(isHead) << endl;
+        // cout << unsigned(isHead) << endl;
         byte* firstHTTP = strstr(aData, "HTTP");
         uword aDataOffset = 4;
         if(isHead){
@@ -87,18 +88,58 @@ HTTPServer::doit() {
           path = extractString(pathAndFile+1, pathLength);
           path[strlen(path)-1] = 0xff;
           fileName = extractString(delimiter+1, pathAndFileLength-pathLength-1);
-          //  cout << "Path: " << path << endl;
-          //  cout << "File: " << fileName << endl;
+          cout << "Path: " << path << endl;
+          cout << "File: " << fileName << endl;
         }
+        udword fromBegining = (udword) (strstr(path, "private")-path);
+        if(path == NULL){
+          //IF ROOT CASE
+          fromBegining = -1;
+        }
+        cout << "fromBegining: " << fromBegining << endl;
+        char* header = NULL;
+        if(fromBegining == 0){
+        // if(false){
+          // This is a private realm
+          cout << "YOU HAVE ENTERED MY PRIVATE REALM" << endl;
 
+          if(strstr(aData, "Authorization: Basic ") == NULL){
+            // Call to private without auth
+            cout << "BRO ARE YOU EVEN TRYING" << endl;
+            header = new char[1000];
+            buildHeader(header, strrchr(fileName, '.')+1, 97, true);
+            // cout << header << endl;
+            // delete[] responseHeader;
+          } else {
+            char* beginning = strstr(aData, "Authorization: Basic ")+21;
+            char* end = strstr(beginning, "\r\n");
+            char* encodedCredentials = extractString(beginning, (udword) (end-beginning));
+            char* decodedCredentials = decodeBase64(encodedCredentials);
+            cout << "decodedCredentials: " << decodedCredentials << endl;
+            if (strcmp(decodedCredentials, admin) == 0) {
+
+            } else {
+              cout << "YOU SHALL NOT PASS" << endl;
+              header = new char[1000];
+              buildHeader(header, strrchr(fileName, '.')+1, 97, true);
+            }
+            delete[] encodedCredentials;
+            delete[] decodedCredentials;
+          }
+        }
         //  See if file exists
         byte* file = FileSystem::instance().readFile(path, fileName, fileLength);
         char* response;
         udword responseLength = 0;
-        if(file != 0){
+        if(file != 0 || header != NULL /* We are in /private */){
           // HEADER
-          char* header = new char[1000];
-          buildHeader(header, strrchr(fileName, '.')+1, fileLength);
+          if(header == NULL) {
+            header = new char[1000];
+            buildHeader(header, strrchr(fileName, '.')+1, fileLength, false);
+          } else {
+            file = (byte*) "<html><head><title>401 Unauthorized</title></head><body><h1>401 Unauthorized</h1></body></html>";
+            fileLength = strlen((char*)file);
+          }
 
           //  char* header = "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n";
           udword headerLength = strlen(header);
@@ -131,8 +172,55 @@ HTTPServer::doit() {
         delete[] path;
         delete[] fileName;
         delete[] pathAndFile;
-      } else if (strncmp(aData, "HEAD", 4) == 0) {
-        // HEAD
+      } else if (strncmp(aData, "POST", 4) == 0) {
+        // POST
+        cout << "POST Received" << endl;
+        udword lengthOfContent = contentLength((char*)aData, aLength);
+        cout << "Content-Length: " << lengthOfContent << endl;
+        char* aggregation;
+        if(strstr(aData, "\r\n\r\n") == NULL){
+          udword continuationLength = 0;
+          char* continuation = mySocket->Read(continuationLength);
+          udword aggregationLength = aLength + continuationLength;
+          aggregation = new char[aggregationLength];
+          memcpy(aggregation, aData, aLength);
+          memcpy(aggregation+aLength, continuation, continuationLength);
+          delete[] continuation;
+        } else {
+          aggregation = aData;
+        }
+        // char* aggregation = new char[lengthOfContent];
+        // memcpy(aggregation, aData, aLength);
+        // udword aggregationLength = aLength;
+        // while(aggregationLength != lengthOfContent){
+        //   udword continuationLength = 0;
+        //   char* continuation = mySocket->Read(continuationLength);
+        //   aggregationLength += continuationLength;
+        //   memcpy(aggregation+aggregationLength, continuation, continuationLength);
+        //   delete[] continuation;
+        // }
+
+        char* encodedContent = extractString(strstr(aggregation, "\r\n\r\n")+4, lengthOfContent);
+        // udword dataLength = (udword)(encodedContent - aggregation);
+        // delimiter == NULL || dataLength != lengthOfContent;
+        // cout << dataLength << " : " << lengthOfContent << endl;
+        char* decodedContent = decodeForm(encodedContent);
+        // cout << decodedContent << endl;
+        // cout << decodedContent[strlen(decodedContent)-3] << endl;
+        // cout << decodedContent[strlen(decodedContent)-2] << endl;
+        // cout << decodedContent[strlen(decodedContent)-1] << endl;
+        //TODO HANDLE STRANGE END OF FILE
+        udword decodedContentLength = strlen(decodedContent);
+        FileSystem::instance().writeFile(NULL, NULL, (byte*) decodedContent, decodedContentLength);
+        delete[] encodedContent;
+        delete[] decodedContent;
+        delete[] aggregation;
+
+        // RESPOND TO MAKE CHROME HAPPY
+        char* response = "HTTP/1.0 200 OK\r\nContent-type: text/html\r\nContent-Length: 117\r\n\r\n<html><head><title>Accepted</title></head><body><h1>The file dynamic.htm was updated successfully.</h1></body></html>";
+        udword responseLength = strlen(response);
+        mySocket->Write((byte*) response, responseLength);
+        delete[] response;
       }
       // BLACK MAGIC, no touchie
       // done = true;
@@ -143,16 +231,20 @@ HTTPServer::doit() {
     coreOut << "Core::doit end " << ax_coreleft_total() << endl;
   }
   coreOut << "Core::doit close " << ax_coreleft_total() << endl;
-  cout << "HTTP server end: " << unsigned(mySocket->isEof()) << endl;
+  // cout << "HTTP server end: " << unsigned(mySocket->isEof()) << endl;
   mySocket->Close();
 }
 
 // MULLEMECK BYGGER HEADER
 void
-HTTPServer::buildHeader(char* header, char* suffixDelimiter, udword fileLength){
+HTTPServer::buildHeader(char* header, char* suffixDelimiter, udword lengthOfContent, bool isPrivate){
   header[0] = '\0';
   //STATUS LINE
-  header = strcat(header, "HTTP/1.0 200 OK\r\n");
+  if(!isPrivate){
+    header = strcat(header, "HTTP/1.0 200 OK\r\n");
+  } else {
+    header = strcat(header, "HTTP/1.0 401 Unauthorized\r\n");
+  }
   //CONTENT TYPE
   if(strcmp(suffixDelimiter, "gif") == 0){
     // cout << "gif" << endl;
@@ -165,10 +257,13 @@ HTTPServer::buildHeader(char* header, char* suffixDelimiter, udword fileLength){
     header = strcat(header, "Content-Type: text/html\r\n");
   }
   //CONTENT LENGTH
-  if(fileLength > 0) {
+  if(lengthOfContent > 0 && !isPrivate) {
     header = strcat(header, "Content-Length: ");
-    sprintf(header+strlen(header),"%d",fileLength);
+    sprintf(header+strlen(header),"%d",lengthOfContent);
     header = strcat(header, "\r\n");
+  }
+  if(isPrivate) {
+    header = header = strcat(header, "WWW-Authenticate: Basic realm=\"private\"\r\n");
   }
   //END OF HEADER
   header = strcat(header, "\r\n");

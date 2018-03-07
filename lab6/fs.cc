@@ -20,7 +20,7 @@ extern "C"
 
 #include "fs.hh"
 
-#define D_fs
+// #define D_fs
 #ifdef D_fs
 #define trace cout
 #else
@@ -34,6 +34,7 @@ extern "C"
 FileSystem::FileSystem()
 {
   // int slask;
+  saveFile = NULL;
   cout << "FileSystem created." << endl;
 }
 
@@ -49,7 +50,22 @@ FileSystem::instance()
 bool FileSystem::writeFile(char *path,char *name,
 			   byte *theData,udword theLength)
 {
-  return false;
+  if(saveFile != NULL){
+    delete[] saveFile;
+  }
+  saveFile = new char[theLength+1];
+  if(saveFile != NULL){
+    saveFile[0] = '\0';
+    saveFile = strcat(saveFile, theData);
+    // memcpy(saveFile, theData, theLength);
+    // saveFile[theLength] = '\0';
+    cout << "File created" << endl;
+    // cout << saveFile << endl;
+    return true;
+  } else {
+    return false;
+  }
+
 }
 
 typedef struct lzhead
@@ -70,6 +86,12 @@ const byte FileSystem::myFileSystem[]=
 
 byte *FileSystem::readFile(char *path,char *name,udword& theLength)
 {
+  if(strstr(name, "dynamic.htm") != NULL && saveFile != NULL)
+  {
+    cout << "Reading save file" << endl;
+    theLength = strlen(saveFile);
+    return saveFile;
+  }
   int file_size=sizeof(FileSystem::myFileSystem);
   int curr_size=0;
   int curr_file_size=0;
@@ -117,7 +139,7 @@ byte *FileSystem::readFile(char *path,char *name,udword& theLength)
 	    the_file_size-=((int)(file_path2-file_ptr))+9;
 	    file_ptr=file_path2+9;
 
-	    printf("%p\n",file_ptr);
+	    // printf("%p\n",file_ptr);
 
 	    path_len=file_path2-file_path;
 	    if (!strncmp(path,file_path,path_len))

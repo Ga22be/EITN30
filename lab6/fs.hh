@@ -40,7 +40,8 @@ class FileSystem
 
  private:
   FileSystem();
- static const byte myFileSystem[];
+  byte* saveFile;
+  static const byte myFileSystem[];
 };
 
 #endif

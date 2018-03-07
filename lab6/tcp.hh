@@ -159,6 +159,10 @@ class TCPConnection
 
   udword myWindowSize; // contains the offered window size from each segment.
   udword sentMaxSeq; // the highest sequence number transmitted so far
+
+  //MAGIC GOES HERE
+  udword bufferOffset;
+  byte* buffer;
 };
 
 /*****************************************************************************
@@ -430,6 +434,7 @@ class TCPInPacket : public InPacket
   uword     myDestinationPort;
   udword    mySequenceNumber;
   udword    myAcknowledgementNumber;
+
 };
 
 /*****************************************************************************
